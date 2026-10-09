@@ -75,8 +75,8 @@ ipcMain.handle("send-prompt", async (_e, text) => {
   const script = `(async (text) => {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     let box = null;
-    for (let i = 0; i < 25; i++) {
-      box = document.querySelector("#chat-input, textarea.ds-textarea, .ds-textarea textarea, textarea[placeholder]");
+    for (let i = 0; i < 20; i++) {
+      box = document.querySelector("textarea");
       if (box) break;
       await sleep(400);
     }
@@ -84,14 +84,13 @@ ipcMain.handle("send-prompt", async (_e, text) => {
     box.focus();
     const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set;
     set.call(box, text);
-    box.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
-    await sleep(500);
+    box.dispatchEvent(new Event("input", { bubbles: true }));
+    await sleep(300);
     const icon = document.querySelector('svg path[d*="M8.3125"]');
-    const send = icon && (icon.closest(".ds-icon-button") || icon.closest('[role="button"]') || icon.closest("button"));
-    const fallback = [...document.querySelectorAll('[role="button"], button')].find((el) => /send message|отправить/i.test((el.getAttribute("aria-label") || "") + (el.title || "")));
-    const btn = send || fallback;
-    if (!btn) return "no-button";
-    btn.click();
+    const arrow = icon && (icon.closest("button") || icon.closest('[role="button"]'));
+    const btn = arrow || [...document.querySelectorAll("button")].find((b) => b.querySelector("svg"));
+    box.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
+    if (btn) btn.click();
     return "sent";
   })(${JSON.stringify(text)})`;
   return guest.webContents.executeJavaScript(script);
