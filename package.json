@@ -1,7 +1,7 @@
 {
   "name": "tirproc",
   "productName": "Тирпроц",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Тирпроц со встроенным браузером Qwen",
   "main": "main.js",
   "author": "ivanivorontsov-sudo",
