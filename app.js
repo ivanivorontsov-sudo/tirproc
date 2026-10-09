@@ -596,16 +596,21 @@ function wireAi() {
   $("aiOpen").addEventListener("click", async () => {
     refresh();
     const prompt = $("aiPrompt").value;
+    if (window.tirproc) {
+      const frame = $("aiFrame");
+      const rect = frame.getBoundingClientRect();
+      await window.tirproc.openDeepSeek({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
+      window.setTimeout(() => window.tirproc.sendPrompt(prompt), 1500);
+      return;
+    }
     try { await navigator.clipboard.writeText(prompt); } catch {}
-    const frame = $("aiFrame");
-    frame.src = "https://chat.deepseek.com/";
-    const popup = window.open("https://chat.deepseek.com/", "tirproc-deepseek");
-    window.setTimeout(() => {
-      if (popup) popup.focus();
-    }, 1200);
+    $("aiFrame").src = "https://chat.deepseek.com/";
   });
   $("aiBuild").addEventListener("click", async () => {
     let text = $("aiAnswer").value.trim();
+    if (!text && window.tirproc) {
+      try { text = (await window.tirproc.readAnswer() || "").trim(); } catch {}
+    }
     if (!text) {
       try { text = (await navigator.clipboard.readText()).trim(); } catch {}
     }
