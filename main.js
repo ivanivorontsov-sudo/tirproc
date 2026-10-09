@@ -1,5 +1,8 @@
-const { app, BrowserWindow, BrowserView, ipcMain } = require("electron");
+const { app, BrowserWindow, BrowserView, ipcMain, session } = require("electron");
 const path = require("path");
+
+const chrome = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+app.userAgentFallback = chrome;
 
 let win;
 let view;
@@ -40,6 +43,7 @@ function ensureView() {
       contextIsolation: true
     }
   });
+  view.webContents.setUserAgent(chrome);
   win.setBrowserView(view);
   view.webContents.loadURL("https://chat.deepseek.com/");
   return view;
@@ -68,8 +72,12 @@ const inject = `(async (text) => {
 
 ipcMain.handle("open-deepseek", async (_e, bounds) => {
   const guest = ensureView();
+  guest.webContents.setUserAgent(chrome);
   place(bounds);
-  if (guest.webContents.isLoading()) {
+  const url = guest.webContents.getURL();
+  if (!url.includes("deepseek.com") || /403|error/i.test(guest.webContents.getTitle())) {
+    await guest.webContents.loadURL("https://chat.deepseek.com/");
+  } else if (guest.webContents.isLoading()) {
     await new Promise((resolve) => guest.webContents.once("did-finish-load", resolve));
   }
   return "ready";
