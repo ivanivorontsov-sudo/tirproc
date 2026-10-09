@@ -49,41 +49,15 @@ function ensureView() {
   return view;
 }
 
-const inject = `(async (text) => {
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const boxOf = () => document.querySelector("textarea") || document.querySelector("[contenteditable='true']");
-  for (let i = 0; i < 30; i++) {
-    const box = boxOf();
-    if (box) {
-      box.focus();
-      if (box.tagName === "TEXTAREA") {
-        const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set;
-        set.call(box, text);
-        box.dispatchEvent(new InputEvent("input", { bubbles: true, data: text, inputType: "insertText" }));
-      } else {
-        box.textContent = text;
-        box.dispatchEvent(new InputEvent("input", { bubbles: true, data: text, inputType: "insertText" }));
-      }
-      await sleep(400);
-      const buttons = [...document.querySelectorAll("button")];
-      const send = buttons.find((b) => /send|отправ/i.test((b.getAttribute("aria-label") || "") + (b.title || "")));
-      ["keydown", "keyup"].forEach((type) => box.dispatchEvent(new KeyboardEvent(type, { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true })));
-      if (send && !send.disabled) send.click();
-      return "sent";
-    }
-    await sleep(500);
-  }
-  return "no-input";
-})`;
 
 ipcMain.handle("open-deepseek", async (_e, bounds) => {
   const guest = ensureView();
   guest.webContents.setUserAgent(chrome);
+  win.setBrowserView(guest);
   place(bounds);
   const url = guest.webContents.getURL();
-  if (!url.includes("deepseek.com")) {
-    await guest.webContents.loadURL("https://chat.deepseek.com/");
-  } else if (guest.webContents.isLoading()) {
+  if (!url.includes("deepseek.com")) await guest.webContents.loadURL("https://chat.deepseek.com/");
+  else if (guest.webContents.isLoading()) {
     await new Promise((resolve) => guest.webContents.once("did-finish-load", resolve));
   }
   return "ready";
@@ -95,17 +69,44 @@ ipcMain.handle("hide-browser", () => {
 });
 
 ipcMain.handle("send-prompt", async (_e, text) => {
-  ensureView();
+  const guest = ensureView();
+  win.setBrowserView(guest);
   if (lastBounds) place(lastBounds);
-  win.setBrowserView(view);
-  return view.webContents.executeJavaScript(inject + `(${JSON.stringify(text)})`);
+  guest.webContents.focus();
+  const focused = await guest.webContents.executeJavaScript(`(() => {
+    const box = document.querySelector("textarea") || document.querySelector("[contenteditable='true']");
+    if (!box) return false;
+    box.focus();
+    if (box.tagName === "TEXTAREA") box.value = "";
+    else box.textContent = "";
+    return true;
+  })()`);
+  if (!focused) return "no-input";
+  guest.webContents.insertText(text);
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  const clicked = await guest.webContents.executeJavaScript(`(() => {
+    const box = document.querySelector("textarea") || document.querySelector("[contenteditable='true']");
+    const buttons = [...document.querySelectorAll("button")];
+    const send = buttons.find((b) => /send|отправ/i.test((b.getAttribute("aria-label") || "") + (b.title || "")));
+    if (send && !send.disabled) { send.click(); return "button"; }
+    if (box) {
+      box.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
+      return "enter";
+    }
+    return "no-send";
+  })()`);
+  if (clicked === "no-send") return "no-input";
+  guest.webContents.sendInputEvent({ type: "keyDown", keyCode: "Enter" });
+  guest.webContents.sendInputEvent({ type: "keyUp", keyCode: "Enter" });
+  return "sent";
 });
 
 ipcMain.handle("read-answer", async () => {
   if (!view) return "";
   return view.webContents.executeJavaScript(`(() => {
-    const nodes = [...document.querySelectorAll("article, .ds-markdown, .markdown, [class*='message']")];
-    return nodes.map((n) => n.innerText).filter(Boolean).slice(-4).join("\\n");
+    const clean = (s) => s.replace(/【[^】]*】/g, "").replace(/\\[\\d+\\]\\([^)]*\\)/g, "");
+    const blocks = [...document.querySelectorAll(".ds-markdown, .markdown, [class*='markdown']")].map((n) => n.innerText).filter(Boolean);
+    return clean(blocks.length ? blocks[blocks.length - 1] : (document.body ? document.body.innerText : ""));
   })()`);
 });
 
