@@ -1,7 +1,7 @@
 {
   "name": "tirproc",
   "productName": "Тирпроц",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Тирпроц со встроенным браузером DeepSeek",
   "main": "main.js",
   "author": "ivanivorontsov-sudo",
@@ -23,6 +23,7 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": true,
       "shortcutName": "Тирпроц",
       "artifactName": "Tirproc-Setup-${version}.exe"
     }

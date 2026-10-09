@@ -616,6 +616,11 @@ function wireAi() {
     refresh();
     try { await navigator.clipboard.writeText($("aiPrompt").value); } catch {}
   });
+  $("aiClear").addEventListener("click", async () => {
+    if (!window.tirproc) return;
+    await window.tirproc.clearDeepSeek();
+    $("browserSlot").textContent = "Вход и кэш DeepSeek стёрты. Войди заново и нажми «Открыть DeepSeek».";
+  });
   $("aiOpen").addEventListener("click", async () => {
     refresh();
     const prompt = $("aiPrompt").value;

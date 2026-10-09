@@ -1,4 +1,4 @@
-const { app, BrowserWindow, BrowserView, ipcMain, clipboard } = require("electron");
+const { app, BrowserWindow, BrowserView, ipcMain, clipboard, session } = require("electron");
 const path = require("path");
 
 const chrome = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -67,6 +67,18 @@ ipcMain.handle("hide-browser", () => {
   if (view && win) win.removeBrowserView(view);
   return true;
 });
+
+ipcMain.handle("clear-deepseek", async () => {
+  if (view && win) win.removeBrowserView(view);
+  const ses = session.fromPartition("persist:deepseek");
+  await ses.clearStorageData();
+  await ses.clearCache();
+  if (view) {
+    view.webContents.loadURL("https://chat.deepseek.com/");
+  }
+  return "cleared";
+});
+
 
 ipcMain.handle("send-prompt", async (_e, text) => {
   const guest = ensureView();
