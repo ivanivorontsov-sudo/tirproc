@@ -625,7 +625,11 @@ function wireAi() {
       const rect = slot.getBoundingClientRect();
       await window.tirproc.openDeepSeek({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
       const status = await window.tirproc.sendPrompt(prompt);
-      slot.textContent = status === "sent" ? "Запрос ушёл. Дождись конца ответа, потом жми сборку." : "Не нашёл поле #chat-input. Войди в аккаунт и нажми ещё раз.";
+      slot.textContent = status === "sent"
+        ? "Запрос ушёл. Дождись конца ответа, потом жми сборку."
+        : status === "no-button"
+          ? "Текст вставлен, стрелка отправки не найдена. Нажми её в чате сам."
+          : "Поле чата не найдено. Войди в аккаунт и нажми ещё раз.";
       return;
     }
     try { await navigator.clipboard.writeText(prompt); } catch {}

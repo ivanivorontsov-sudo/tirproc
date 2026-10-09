@@ -1,4 +1,4 @@
-const { app, BrowserWindow, BrowserView, ipcMain, session } = require("electron");
+const { app, BrowserWindow, BrowserView, ipcMain, clipboard } = require("electron");
 const path = require("path");
 
 const chrome = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -72,28 +72,27 @@ ipcMain.handle("send-prompt", async (_e, text) => {
   const guest = ensureView();
   win.setBrowserView(guest);
   if (lastBounds) place(lastBounds);
-  const script = `(async (text) => {
-    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-    let box = null;
-    for (let i = 0; i < 20; i++) {
-      box = document.querySelector("textarea");
-      if (box) break;
-      await sleep(400);
-    }
-    if (!box) return "no-input";
+  clipboard.writeText(text);
+  const ready = await guest.webContents.executeJavaScript(`(() => {
+    const box = document.querySelector("#chat-input") || document.querySelector("textarea:not([name='search'])");
+    if (!box) return false;
     box.focus();
-    const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set;
-    set.call(box, text);
-    box.dispatchEvent(new Event("input", { bubbles: true }));
-    await sleep(300);
+    box.select && box.select();
+    return true;
+  })()`);
+  if (!ready) return "no-input";
+  guest.webContents.paste();
+  await new Promise((r) => setTimeout(r, 400));
+  const clicked = await guest.webContents.executeJavaScript(`(() => {
     const icon = document.querySelector('svg path[d*="M8.3125"]');
-    const arrow = icon && (icon.closest("button") || icon.closest('[role="button"]'));
-    const btn = arrow || [...document.querySelectorAll("button")].find((b) => b.querySelector("svg"));
-    box.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
-    if (btn) btn.click();
-    return "sent";
-  })(${JSON.stringify(text)})`;
-  return guest.webContents.executeJavaScript(script);
+    const arrow = icon && (icon.closest('[role="button"]') || icon.closest("button"));
+    const named = document.querySelector('[aria-label="Send Message"], [aria-label="Send"]');
+    const btn = arrow || named;
+    if (!btn) return false;
+    btn.click();
+    return true;
+  })()`);
+  return clicked ? "sent" : "no-button";
 });
 
 ipcMain.handle("read-answer", async () => {
