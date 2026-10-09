@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Тирпроц</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="mark">Т</span>
+      <div>
+        <strong>Тирпроц</strong>
+        <small>доска рангов, данные остаются у тебя</small>
+      </div>
+    </div>
+    <label class="title-edit">
+      <span>Название</span>
+      <input id="boardTitle" maxlength="80" spellcheck="false">
+    </label>
+    <div class="actions">
+      <button id="undoBtn" title="Отменить">Отменить</button>
+      <button id="redoBtn" title="Вернуть">Вернуть</button>
+      <button id="pngBtn">PNG</button>
+      <button id="jsonOutBtn">Скачать JSON</button>
+      <button id="jsonInBtn">Открыть JSON</button>
+      <input id="jsonFile" type="file" accept="application/json" hidden>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="side">
+      <section>
+        <h2>Проекты</h2>
+        <div class="row">
+          <button id="newBoard">Новый</button>
+          <button id="dupBoard">Копия</button>
+          <button id="delBoard" class="danger">Удалить</button>
+        </div>
+        <ul id="projectList" class="projects"></ul>
+      </section>
+      <section>
+        <h2>Шаблоны</h2>
+        <div class="templates" id="templates"></div>
+      </section>
+      <section>
+        <h2>Ряд</h2>
+        <div class="row">
+          <input id="tierName" maxlength="16" placeholder="Имя ряда">
+          <input id="tierColor" type="color" value="#c4554a">
+          <button id="addTier">Добавить</button>
+        </div>
+        <p class="hint">Двойной щелчок по имени ряда меняет подпись. Цвет — квадрат слева.</p>
+      </section>
+      <section>
+        <h2>Карточка</h2>
+        <input id="itemName" maxlength="48" placeholder="Имя, Enter — в запас">
+        <textarea id="itemNote" maxlength="240" placeholder="Заметка"></textarea>
+        <div class="row">
+          <button id="addText">Добавить текст</button>
+          <button id="addImages">Картинки</button>
+          <input id="imageFile" type="file" accept="image/*" multiple hidden>
+        </div>
+        <p class="hint">Можно перетащить файлы на доску или вставить картинку из буфера.</p>
+      </section>
+      <section>
+        <h2>Сводка</h2>
+        <div id="stats" class="stats"></div>
+      </section>
+    </aside>
+
+    <main>
+      <div id="board" class="board"></div>
+      <section class="pool-wrap">
+        <div class="pool-head">
+          <h2>Запас <span id="poolCount"></span></h2>
+          <input id="search" placeholder="Найти в запасе">
+          <button id="shuffle">Перемешать</button>
+          <button id="clearPool" class="danger">Очистить запас</button>
+        </div>
+        <div id="pool" class="pool" data-tier="pool"></div>
+      </section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
