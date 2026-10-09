@@ -558,8 +558,18 @@ function extractJson(text) {
       }
     }
   }
-  if (!found.length) throw new Error("В ответе нет готового JSON. Дождись конца ответа, источники после блока не мешают.");
-  return found[found.length - 1];
+  const real = found.filter((data) => JSON.stringify(data).indexOf("коротко почему") < 0);
+  if (real.length) return real[real.length - 1];
+  if (found.length) return found[found.length - 1];
+  const rows = [];
+  text.split(/\n+/).forEach((line) => {
+    const m = line.match(/^\s*([SABCD]|[А-ЯA-Z][^:]{0,12})\s*[:—-]\s*(.+)$/);
+    if (!m) return;
+    const items = m[2].split(/[,;]/).map((name) => ({ name: name.trim(), note: "" })).filter((it) => it.name);
+    if (items.length) rows.push({ label: m[1].trim(), items });
+  });
+  if (rows.length) return { title: "", tiers: rows };
+  throw new Error("В ответе нет JSON. Дождись конца ответа и нажми сборку ещё раз.");
 }
 
 function boardFromAi(data) {
@@ -651,6 +661,7 @@ function wireAi() {
       try { text = (await navigator.clipboard.readText()).trim(); } catch {}
     }
     if (!text) return alert("Ответ DeepSeek ещё не прочитался. Дождись конца ответа и нажми сборку ещё раз.");
+    $("aiAnswer").value = text.slice(0, 4000);
     try { await applyAiAnswer(text); }
     catch (err) { alert(err.message); }
   });

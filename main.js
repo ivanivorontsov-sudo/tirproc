@@ -96,35 +96,35 @@ ipcMain.handle("send-prompt", async (_e, text) => {
   const guest = ensureView();
   win.setBrowserView(guest);
   if (lastBounds) place(lastBounds);
-  clipboard.writeText(text);
-  const ready = await guest.webContents.executeJavaScript(`(() => {
+  guest.webContents.focus();
+  const status = await guest.webContents.executeJavaScript(`(async (text) => {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const box = document.querySelector("#chat-input") || document.querySelector("textarea:not([name='search'])");
-    if (!box) return false;
+    if (!box) return "no-input";
     box.focus();
-    box.select && box.select();
-    return true;
-  })()`);
-  if (!ready) return "no-input";
-  guest.webContents.paste();
-  await new Promise((r) => setTimeout(r, 400));
-  const clicked = await guest.webContents.executeJavaScript(`(() => {
+    const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set;
+    set.call(box, text);
+    box.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
+    await sleep(350);
     const icon = document.querySelector('svg path[d*="M8.3125"]');
-    const arrow = icon && (icon.closest('[role="button"]') || icon.closest("button"));
-    const named = document.querySelector('[aria-label="Send Message"], [aria-label="Send"]');
-    const btn = arrow || named;
-    if (!btn) return false;
+    const arrow = icon && (icon.closest(".ds-icon-button") || icon.closest('[role="button"]') || icon.closest("button"));
+    const enabled = [...document.querySelectorAll('div[role="button"][aria-disabled="false"], button:not([disabled])')]
+      .find((el) => el.querySelector('svg path[d*="M8.3125"]') || /send/i.test(el.getAttribute("aria-label") || ""));
+    const btn = arrow || enabled;
+    if (!btn) return "no-button";
     btn.click();
-    return true;
-  })()`);
-  return clicked ? "sent" : "no-button";
+    return "sent";
+  })(${JSON.stringify(text)})`);
+  return status;
 });
 
 ipcMain.handle("read-answer", async () => {
   if (!view) return "";
   return view.webContents.executeJavaScript(`(() => {
-    const clean = (s) => s.replace(/【[^】]*】/g, "").replace(/\\[\\d+\\]\\([^)]*\\)/g, "");
-    const blocks = [...document.querySelectorAll(".ds-markdown, .markdown, [class*='markdown']")].map((n) => n.innerText).filter(Boolean);
-    return clean(blocks.length ? blocks[blocks.length - 1] : (document.body ? document.body.innerText : ""));
+    const clean = (s) => s.replace(/【[^】]*】/g, " ").replace(/\\[\\d+\\]\\([^)]*\\)/g, " ").replace(/\\[\\d+\\]/g, " ");
+    const blocks = [...document.querySelectorAll(".ds-markdown, pre, code")].map((n) => n.innerText).filter((s) => s && s.trim().length > 20);
+    const text = blocks.length ? blocks.join("\\n") : (document.body ? document.body.innerText : "");
+    return clean(text);
   })()`);
 });
 
