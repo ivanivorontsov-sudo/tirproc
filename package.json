@@ -1,8 +1,8 @@
 {
   "name": "tirproc",
   "productName": "Тирпроц",
-  "version": "1.1.4",
-  "description": "Тирпроц со встроенным браузером DeepSeek",
+  "version": "1.2.0",
+  "description": "Тирпроц со встроенным браузером Qwen",
   "main": "main.js",
   "author": "ivanivorontsov-sudo",
   "scripts": {

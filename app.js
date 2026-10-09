@@ -628,8 +628,8 @@ function wireAi() {
   });
   $("aiClear").addEventListener("click", async () => {
     if (!window.tirproc) return;
-    await window.tirproc.clearDeepSeek();
-    $("browserSlot").textContent = "Вход и кэш DeepSeek стёрты. Войди заново и нажми «Открыть DeepSeek».";
+    await window.tirproc.clearQwen();
+    $("browserSlot").textContent = "Вход и кэш Qwen стёрты. Войди заново и нажми «Открыть Qwen».";
   });
   $("aiOpen").addEventListener("click", async () => {
     refresh();
@@ -638,10 +638,10 @@ function wireAi() {
       const slot = $("browserSlot");
       slot.textContent = "";
       const rect = slot.getBoundingClientRect();
-      const opened = await window.tirproc.openDeepSeek({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
+      const opened = await window.tirproc.openQwen({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
       if (opened === "blocked") {
         await window.tirproc.openExternal(prompt);
-        slot.textContent = "DeepSeek режет встроенное окно. Открыл обычный браузер, запрос уже в буфере: вставь его в чат.";
+        slot.textContent = "Qwen режет встроенное окно. Открыл обычный браузер, запрос уже в буфере: вставь его в чат.";
         return;
       }
       const status = await window.tirproc.sendPrompt(prompt);
@@ -660,7 +660,7 @@ function wireAi() {
     if (!text) {
       try { text = (await navigator.clipboard.readText()).trim(); } catch {}
     }
-    if (!text) return alert("Ответ DeepSeek ещё не прочитался. Дождись конца ответа и нажми сборку ещё раз.");
+    if (!text) return alert("Ответ Qwen ещё не прочитался. Дождись конца ответа и нажми сборку ещё раз.");
     $("aiAnswer").value = text.slice(0, 4000);
     try { await applyAiAnswer(text); }
     catch (err) { alert(err.message); }

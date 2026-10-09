@@ -39,13 +39,13 @@ function ensureView() {
   if (view) return view;
   view = new BrowserView({
     webPreferences: {
-      partition: "persist:deepseek",
+      partition: "persist:qwen",
       contextIsolation: true
     }
   });
   view.webContents.setUserAgent(chrome);
   win.setBrowserView(view);
-  view.webContents.loadURL("https://chat.deepseek.com/");
+  view.webContents.loadURL("https://chat.qwen.ai/");
   return view;
 }
 
@@ -56,7 +56,7 @@ ipcMain.handle("open-deepseek", async (_e, bounds) => {
   win.setBrowserView(guest);
   place(bounds);
   const url = guest.webContents.getURL();
-  if (!url.includes("deepseek.com")) await guest.webContents.loadURL("https://chat.deepseek.com/");
+  if (!url.includes("qwen.ai")) await guest.webContents.loadURL("https://chat.qwen.ai/");
   else if (guest.webContents.isLoading()) {
     await new Promise((resolve) => guest.webContents.once("did-finish-load", resolve));
   }
@@ -71,7 +71,7 @@ ipcMain.handle("open-deepseek", async (_e, bounds) => {
 
 ipcMain.handle("open-external", async (_e, text) => {
   clipboard.writeText(text || "");
-  await shell.openExternal("https://chat.deepseek.com/");
+  await shell.openExternal("https://chat.qwen.ai/");
   return "opened";
 });
 
@@ -82,11 +82,11 @@ ipcMain.handle("hide-browser", () => {
 
 ipcMain.handle("clear-deepseek", async () => {
   if (view && win) win.removeBrowserView(view);
-  const ses = session.fromPartition("persist:deepseek");
+  const ses = session.fromPartition("persist:qwen");
   await ses.clearStorageData();
   await ses.clearCache();
   if (view) {
-    view.webContents.loadURL("https://chat.deepseek.com/");
+    view.webContents.loadURL("https://chat.qwen.ai/");
   }
   return "cleared";
 });
@@ -99,18 +99,18 @@ ipcMain.handle("send-prompt", async (_e, text) => {
   guest.webContents.focus();
   const status = await guest.webContents.executeJavaScript(`(async (text) => {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-    const box = document.querySelector("#chat-input") || document.querySelector("textarea:not([name='search'])");
+    let box = null;
+    for (let i = 0; i < 20 && !box; i++) {
+      box = document.querySelector("#chat-input, textarea.message-input-textarea");
+      if (!box) await sleep(400);
+    }
     if (!box) return "no-input";
     box.focus();
     const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set;
     set.call(box, text);
-    box.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
-    await sleep(350);
-    const icon = document.querySelector('svg path[d*="M8.3125"]');
-    const arrow = icon && (icon.closest(".ds-icon-button") || icon.closest('[role="button"]') || icon.closest("button"));
-    const enabled = [...document.querySelectorAll('div[role="button"][aria-disabled="false"], button:not([disabled])')]
-      .find((el) => el.querySelector('svg path[d*="M8.3125"]') || /send/i.test(el.getAttribute("aria-label") || ""));
-    const btn = arrow || enabled;
+    box.dispatchEvent(new Event("input", { bubbles: true }));
+    await sleep(400);
+    const btn = document.querySelector("#send-message-button, .message-input-right-button-send");
     if (!btn) return "no-button";
     btn.click();
     return "sent";
@@ -122,7 +122,7 @@ ipcMain.handle("read-answer", async () => {
   if (!view) return "";
   return view.webContents.executeJavaScript(`(() => {
     const clean = (s) => s.replace(/【[^】]*】/g, " ").replace(/\\[\\d+\\]\\([^)]*\\)/g, " ").replace(/\\[\\d+\\]/g, " ");
-    const blocks = [...document.querySelectorAll(".ds-markdown, pre, code")].map((n) => n.innerText).filter((s) => s && s.trim().length > 20);
+    const blocks = [...document.querySelectorAll(".response-message-content, .phase-answer, pre, code")].map((n) => n.innerText).filter((s) => s && s.trim().length > 20);
     const text = blocks.length ? blocks.join("\\n") : (document.body ? document.body.innerText : "");
     return clean(text);
   })()`);
