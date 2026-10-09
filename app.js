@@ -537,12 +537,25 @@ function aiPromptText() {
 }
 
 function extractJson(text) {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const raw = fenced ? fenced[1] : text;
-  const start = raw.indexOf("{");
-  const end = raw.lastIndexOf("}");
-  if (start < 0 || end <= start) throw new Error("В ответе нет JSON");
-  return JSON.parse(raw.slice(start, end + 1));
+  const found = [];
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] !== "{") continue;
+    let depth = 0;
+    for (let j = i; j < text.length; j++) {
+      if (text[j] === "{") depth++;
+      else if (text[j] === "}") depth--;
+      if (depth === 0) {
+        try {
+          const data = JSON.parse(text.slice(i, j + 1));
+          if (data && Array.isArray(data.tiers)) found.push(data);
+        } catch {}
+        break;
+      }
+    }
+  }
+  if (!found.length) throw new Error("В ответе нет JSON с рядами. Дождись конца ответа DeepSeek.");
+  found.sort((a, b) => JSON.stringify(b).length - JSON.stringify(a).length);
+  return found[0];
 }
 
 function boardFromAi(data) {
@@ -579,6 +592,7 @@ async function applyAiAnswer(text) {
   await saveBoard();
   render();
   $("aiPanel").hidden = true;
+  if (window.tirproc) window.tirproc.hideBrowser();
 }
 
 function wireAi() {
@@ -610,16 +624,16 @@ function wireAi() {
     try { await navigator.clipboard.writeText(prompt); } catch {}
   });
   $("aiBuild").addEventListener("click", async () => {
-    let text = $("aiAnswer").value.trim();
-    if (!text && window.tirproc) {
-      try { text = (await window.tirproc.readAnswer() || "").trim(); } catch {}
+    let text = "";
+    if (window.tirproc) {
+      try { text = (await window.tirproc.readAnswer() || "").trim(); } catch (err) { text = ""; }
     }
     if (!text) {
       try { text = (await navigator.clipboard.readText()).trim(); } catch {}
     }
-    if (!text) return alert("Скопируй ответ DeepSeek или вставь его в поле.");
+    if (!text) return alert("Ответ DeepSeek ещё не прочитался. Дождись конца ответа и нажми сборку ещё раз.");
     try { await applyAiAnswer(text); }
-    catch (err) { alert("Не разобрал ответ: " + err.message); }
+    catch (err) { alert(err.message); }
   });
   refresh();
 }
