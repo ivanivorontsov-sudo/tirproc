@@ -1,7 +1,7 @@
 {
   "name": "tirproc",
   "productName": "Тирпроц",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Тирпроц со встроенным браузером DeepSeek",
   "main": "main.js",
   "author": "ivanivorontsov-sudo",
@@ -17,6 +17,7 @@
     "appId": "ru.tirproc.app",
     "productName": "Тирпроц",
     "directories": { "output": "dist" },
+    "publish": null,
     "files": ["index.html", "styles.css", "app.js", "main.js", "preload.js", "package.json"],
     "win": { "target": ["nsis"] },
     "nsis": {
