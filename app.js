@@ -585,7 +585,10 @@ function wireAi() {
   const panel = $("aiPanel");
   const refresh = () => { $("aiPrompt").value = aiPromptText(); };
   $("aiBtn").addEventListener("click", () => { panel.hidden = false; refresh(); });
-  $("aiClose").addEventListener("click", () => { panel.hidden = true; });
+  $("aiClose").addEventListener("click", () => {
+    panel.hidden = true;
+    if (window.tirproc) window.tirproc.hideBrowser();
+  });
   $("aiTopic").addEventListener("input", refresh);
   $("aiProducts").addEventListener("input", refresh);
   $("aiSearch").addEventListener("change", refresh);
@@ -598,9 +601,10 @@ function wireAi() {
     const prompt = $("aiPrompt").value;
     if (window.tirproc) {
       const frame = $("aiFrame");
+      frame.hidden = true;
       const rect = frame.getBoundingClientRect();
-      await window.tirproc.openDeepSeek({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
-      window.setTimeout(() => window.tirproc.sendPrompt(prompt), 1500);
+      const status = await window.tirproc.openDeepSeek({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
+      if (status !== "sent") $("aiAnswer").placeholder = "DeepSeek открыт. Если поле ещё пустое, войди в аккаунт и нажми «Скопировать запрос», затем «Открыть DeepSeek» ещё раз.";
       return;
     }
     try { await navigator.clipboard.writeText(prompt); } catch {}

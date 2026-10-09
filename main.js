@@ -66,20 +66,24 @@ const inject = `(async (text) => {
   return "no-input";
 })`;
 
-ipcMain.handle("open-deepseek", (_e, bounds) => {
-  ensureView();
+ipcMain.handle("open-deepseek", async (_e, bounds) => {
+  const guest = ensureView();
   place(bounds);
-  return true;
+  if (guest.webContents.isLoading()) {
+    await new Promise((resolve) => guest.webContents.once("did-finish-load", resolve));
+  }
+  return "ready";
 });
 
 ipcMain.handle("hide-browser", () => {
-  if (view) win.setBrowserView(null);
+  if (view && win) win.removeBrowserView(view);
   return true;
 });
 
 ipcMain.handle("send-prompt", async (_e, text) => {
   ensureView();
   if (lastBounds) place(lastBounds);
+  win.setBrowserView(view);
   return view.webContents.executeJavaScript(inject + `(${JSON.stringify(text)})`);
 });
 

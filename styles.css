@@ -160,3 +160,5 @@ textarea { min-height: 64px; resize: vertical; }
 .check { font-size: 14px; }
 #aiPrompt, #aiAnswer { min-height: 72px; }
 #aiFrame { width: 100%; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+
+[hidden] { display: none !important; }
