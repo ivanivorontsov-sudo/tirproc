@@ -600,15 +600,14 @@ function wireAi() {
     refresh();
     const prompt = $("aiPrompt").value;
     if (window.tirproc) {
-      const frame = $("aiFrame");
-      frame.hidden = true;
-      const rect = frame.getBoundingClientRect();
-      const status = await window.tirproc.openDeepSeek({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
-      if (status !== "sent") $("aiAnswer").placeholder = "DeepSeek открыт. Если поле ещё пустое, войди в аккаунт и нажми «Скопировать запрос», затем «Открыть DeepSeek» ещё раз.";
+      const slot = $("browserSlot");
+      slot.textContent = "";
+      const rect = slot.getBoundingClientRect();
+      await window.tirproc.openDeepSeek({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
+      window.tirproc.sendPrompt(prompt);
       return;
     }
     try { await navigator.clipboard.writeText(prompt); } catch {}
-    $("aiFrame").src = "https://chat.deepseek.com/";
   });
   $("aiBuild").addEventListener("click", async () => {
     let text = $("aiAnswer").value.trim();
