@@ -6,5 +6,6 @@ contextBridge.exposeInMainWorld("tirproc", {
   sendPrompt: (text) => ipcRenderer.invoke("send-prompt", text),
   readAnswer: () => ipcRenderer.invoke("read-answer"),
   hideBrowser: () => ipcRenderer.invoke("hide-browser"),
-  clearDeepSeek: () => ipcRenderer.invoke("clear-deepseek")
+  clearDeepSeek: () => ipcRenderer.invoke("clear-deepseek"),
+  openExternal: (text) => ipcRenderer.invoke("open-external", text)
 });

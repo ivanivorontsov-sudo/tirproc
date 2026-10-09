@@ -628,20 +628,23 @@ function wireAi() {
       const slot = $("browserSlot");
       slot.textContent = "";
       const rect = slot.getBoundingClientRect();
-      await window.tirproc.openDeepSeek({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
+      const opened = await window.tirproc.openDeepSeek({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
+      if (opened === "blocked") {
+        await window.tirproc.openExternal(prompt);
+        slot.textContent = "DeepSeek режет встроенное окно. Открыл обычный браузер, запрос уже в буфере: вставь его в чат.";
+        return;
+      }
       const status = await window.tirproc.sendPrompt(prompt);
       slot.textContent = status === "sent"
         ? "Запрос ушёл. Дождись конца ответа, потом жми сборку."
-        : status === "no-button"
-          ? "Текст вставлен, стрелка отправки не найдена. Нажми её в чате сам."
-          : "Поле чата не найдено. Войди в аккаунт и нажми ещё раз.";
+        : "Чат открыт, но сам не отправил. Запрос в буфере, вставь его в поле.";
       return;
     }
     try { await navigator.clipboard.writeText(prompt); } catch {}
   });
   $("aiBuild").addEventListener("click", async () => {
-    let text = "";
-    if (window.tirproc) {
+    let text = ($("aiAnswer").value || "").trim();
+    if (!text && window.tirproc) {
       try { text = (await window.tirproc.readAnswer() || "").trim(); } catch (err) { text = ""; }
     }
     if (!text) {
