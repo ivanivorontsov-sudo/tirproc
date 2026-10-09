@@ -22,6 +22,7 @@
     <div class="actions">
       <button id="undoBtn" title="Отменить">Отменить</button>
       <button id="redoBtn" title="Вернуть">Вернуть</button>
+      <button id="aiBtn">Использовать ИИ</button>
       <button id="pngBtn">PNG</button>
       <button id="jsonOutBtn">Скачать JSON</button>
       <button id="jsonInBtn">Открыть JSON</button>
@@ -82,6 +83,26 @@
         <div id="pool" class="pool" data-tier="pool"></div>
       </section>
     </main>
+  </div>
+  <div id="aiPanel" class="ai-panel" hidden>
+    <div class="ai-card">
+      <div class="ai-head">
+        <strong>DeepSeek</strong>
+        <button id="aiClose">Закрыть</button>
+      </div>
+      <p class="hint">Вход в аккаунт — в окне чата. Запрос ниже уже в форме, из которой Тирпроц собирает ряды. Браузер не даёт вписать текст в чужой сайт за тебя, поэтому запрос копируется сам, а ответ забирается одной кнопкой.</p>
+      <input id="aiTopic" maxlength="120" placeholder="Тема: лучшие супы, игры 2024, районы города">
+      <textarea id="aiProducts" maxlength="800" placeholder="Конкретные продукты, если есть. По одному в строке"></textarea>
+      <label class="check"><input id="aiSearch" type="checkbox" checked> попросить поискать свежие рейтинги</label>
+      <div class="row">
+        <button id="aiOpen">Открыть DeepSeek</button>
+        <button id="aiCopy">Скопировать запрос</button>
+        <button id="aiBuild">Собрать тир-лист из ответа</button>
+      </div>
+      <textarea id="aiPrompt" readonly></textarea>
+      <textarea id="aiAnswer" placeholder="Если кнопка сбора не видит буфер, вставь сюда ответ DeepSeek"></textarea>
+      <iframe id="aiFrame" title="DeepSeek" referrerpolicy="no-referrer"></iframe>
+    </div>
   </div>
   <script src="app.js"></script>
 </body>

@@ -512,7 +512,106 @@ openDb().then(async (d) => {
     await saveBoard();
   } else board = boards[0];
   wire();
+  wireAi();
   render();
 }).catch((err) => {
   document.body.innerHTML = `<p style="padding:24px">Не открылась база: ${err}</p>`;
 });
+
+
+const TIER_COLORS = ["#c4554a","#d4783a","#d4a017","#6f8f4e","#4f7d8a","#6d645c","#7a5b78","#3f6f8a"];
+
+function aiPromptText() {
+  const topic = $("aiTopic").value.trim() || "произвольная тема";
+  const products = $("aiProducts").value.trim();
+  const search = $("aiSearch").checked;
+  return [
+    "Составь тир-лист.",
+    "Тема: " + topic + ".",
+    products ? "Обязательно разложи эти пункты, не подменяй их другими: " + products.replace(/\n+/g, ", ") + "." : "Подбери конкретные пункты сам.",
+    search ? "Если умеешь искать в интернете, опирайся на свежие рейтинги и обзоры, а не на общую память." : "Опирайся на известные оценки.",
+    "Ответ — только JSON, без пояснений и без markdown.",
+    "Форма: {\"title\":\"название\",\"tiers\":[{\"label\":\"S\",\"items\":[{\"name\":\"пункт\",\"note\":\"коротко почему\"}]}]}",
+    "Ряды от лучшего к худшему, 5 или 6 рядов, в каждом от 3 до 8 пунктов. label короткий. note не длиннее 120 знаков."
+  ].join(" ");
+}
+
+function extractJson(text) {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const raw = fenced ? fenced[1] : text;
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start < 0 || end <= start) throw new Error("В ответе нет JSON");
+  return JSON.parse(raw.slice(start, end + 1));
+}
+
+function boardFromAi(data) {
+  const tiers = (data.tiers || []).slice(0, 8).map((row, i) => ({
+    id: uid(),
+    label: String(row.label || "Ряд").slice(0, 16),
+    color: TIER_COLORS[i % TIER_COLORS.length]
+  }));
+  if (!tiers.length) throw new Error("В ответе нет рядов");
+  const placements = {};
+  const items = {};
+  tiers.forEach((row, i) => {
+    placements[row.id] = [];
+    const src = (data.tiers[i].items || []).slice(0, 12);
+    src.forEach((it) => {
+      const id = uid();
+      items[id] = { id, name: String(it.name || "пункт").slice(0, 48), note: String(it.note || "").slice(0, 240) };
+      placements[row.id].push(id);
+    });
+  });
+  return {
+    id: uid(),
+    title: String(data.title || $("aiTopic").value || "Тир-лист").slice(0, 80),
+    updated: Date.now(),
+    tiers, placements, pool: [], items
+  };
+}
+
+async function applyAiAnswer(text) {
+  const data = extractJson(text);
+  board = boardFromAi(data);
+  boards.unshift(board);
+  undo = []; redo = [];
+  await saveBoard();
+  render();
+  $("aiPanel").hidden = true;
+}
+
+function wireAi() {
+  const panel = $("aiPanel");
+  const refresh = () => { $("aiPrompt").value = aiPromptText(); };
+  $("aiBtn").addEventListener("click", () => { panel.hidden = false; refresh(); });
+  $("aiClose").addEventListener("click", () => { panel.hidden = true; });
+  $("aiTopic").addEventListener("input", refresh);
+  $("aiProducts").addEventListener("input", refresh);
+  $("aiSearch").addEventListener("change", refresh);
+  $("aiCopy").addEventListener("click", async () => {
+    refresh();
+    try { await navigator.clipboard.writeText($("aiPrompt").value); } catch {}
+  });
+  $("aiOpen").addEventListener("click", async () => {
+    refresh();
+    const prompt = $("aiPrompt").value;
+    try { await navigator.clipboard.writeText(prompt); } catch {}
+    const frame = $("aiFrame");
+    frame.src = "https://chat.deepseek.com/";
+    const popup = window.open("https://chat.deepseek.com/", "tirproc-deepseek");
+    window.setTimeout(() => {
+      if (popup) popup.focus();
+    }, 1200);
+  });
+  $("aiBuild").addEventListener("click", async () => {
+    let text = $("aiAnswer").value.trim();
+    if (!text) {
+      try { text = (await navigator.clipboard.readText()).trim(); } catch {}
+    }
+    if (!text) return alert("Скопируй ответ DeepSeek или вставь его в поле.");
+    try { await applyAiAnswer(text); }
+    catch (err) { alert("Не разобрал ответ: " + err.message); }
+  });
+  refresh();
+}
