@@ -51,18 +51,24 @@ function ensureView() {
 
 const inject = `(async (text) => {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  for (let i = 0; i < 20; i++) {
-    const box = document.querySelector("textarea");
+  const boxOf = () => document.querySelector("textarea") || document.querySelector("[contenteditable='true']");
+  for (let i = 0; i < 30; i++) {
+    const box = boxOf();
     if (box) {
       box.focus();
-      const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set;
-      set.call(box, text);
-      box.dispatchEvent(new Event("input", { bubbles: true }));
-      await sleep(300);
-      const btn = [...document.querySelectorAll("button")].find((b) => /send|отправ/i.test(b.getAttribute("aria-label") || "") || b.querySelector("svg"));
-      const enter = new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true });
-      box.dispatchEvent(enter);
-      if (btn && !btn.disabled) btn.click();
+      if (box.tagName === "TEXTAREA") {
+        const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set;
+        set.call(box, text);
+        box.dispatchEvent(new InputEvent("input", { bubbles: true, data: text, inputType: "insertText" }));
+      } else {
+        box.textContent = text;
+        box.dispatchEvent(new InputEvent("input", { bubbles: true, data: text, inputType: "insertText" }));
+      }
+      await sleep(400);
+      const buttons = [...document.querySelectorAll("button")];
+      const send = buttons.find((b) => /send|отправ/i.test((b.getAttribute("aria-label") || "") + (b.title || "")));
+      ["keydown", "keyup"].forEach((type) => box.dispatchEvent(new KeyboardEvent(type, { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true })));
+      if (send && !send.disabled) send.click();
       return "sent";
     }
     await sleep(500);
@@ -75,7 +81,7 @@ ipcMain.handle("open-deepseek", async (_e, bounds) => {
   guest.webContents.setUserAgent(chrome);
   place(bounds);
   const url = guest.webContents.getURL();
-  if (!url.includes("deepseek.com") || /403|error/i.test(guest.webContents.getTitle())) {
+  if (!url.includes("deepseek.com")) {
     await guest.webContents.loadURL("https://chat.deepseek.com/");
   } else if (guest.webContents.isLoading()) {
     await new Promise((resolve) => guest.webContents.once("did-finish-load", resolve));

@@ -530,32 +530,36 @@ function aiPromptText() {
     "Тема: " + topic + ".",
     products ? "Обязательно разложи эти пункты, не подменяй их другими: " + products.replace(/\n+/g, ", ") + "." : "Подбери конкретные пункты сам.",
     search ? "Если умеешь искать в интернете, опирайся на свежие рейтинги и обзоры, а не на общую память." : "Опирайся на известные оценки.",
-    "Ответ — только JSON, без пояснений и без markdown.",
+    "Ответ заканчивай одним блоком ```json. Источники, ссылки и сноски пиши только после блока, внутрь JSON не вставляй.",
     "Форма: {\"title\":\"название\",\"tiers\":[{\"label\":\"S\",\"items\":[{\"name\":\"пункт\",\"note\":\"коротко почему\"}]}]}",
     "Ряды от лучшего к худшему, 5 или 6 рядов, в каждом от 3 до 8 пунктов. label короткий. note не длиннее 120 знаков."
   ].join(" ");
 }
 
 function extractJson(text) {
+  const fenced = [...text.matchAll(/```json\s*([\s\S]*?)```/gi)].map((m) => m[1]);
+  const source = fenced.length ? fenced[fenced.length - 1] : text
+    .replace(/【[^】]*】/g, "")
+    .replace(/\[\d+\]\([^)]*\)/g, "")
+    .replace(/https?:\/\/\S+/g, "");
   const found = [];
-  for (let i = 0; i < text.length; i++) {
-    if (text[i] !== "{") continue;
+  for (let i = 0; i < source.length; i++) {
+    if (source[i] !== "{") continue;
     let depth = 0;
-    for (let j = i; j < text.length; j++) {
-      if (text[j] === "{") depth++;
-      else if (text[j] === "}") depth--;
+    for (let j = i; j < source.length; j++) {
+      if (source[j] === "{") depth++;
+      else if (source[j] === "}") depth--;
       if (depth === 0) {
         try {
-          const data = JSON.parse(text.slice(i, j + 1));
-          if (data && Array.isArray(data.tiers)) found.push(data);
+          const data = JSON.parse(source.slice(i, j + 1));
+          if (data && Array.isArray(data.tiers) && data.tiers.length) found.push(data);
         } catch {}
         break;
       }
     }
   }
-  if (!found.length) throw new Error("В ответе нет JSON с рядами. Дождись конца ответа DeepSeek.");
-  found.sort((a, b) => JSON.stringify(b).length - JSON.stringify(a).length);
-  return found[0];
+  if (!found.length) throw new Error("В ответе нет готового JSON. Дождись конца ответа, источники после блока не мешают.");
+  return found[found.length - 1];
 }
 
 function boardFromAi(data) {
@@ -572,7 +576,9 @@ function boardFromAi(data) {
     const src = (data.tiers[i].items || []).slice(0, 12);
     src.forEach((it) => {
       const id = uid();
-      items[id] = { id, name: String(it.name || "пункт").slice(0, 48), note: String(it.note || "").slice(0, 240) };
+      const name = typeof it === "string" ? it : it.name;
+      const note = typeof it === "string" ? "" : it.note;
+      items[id] = { id, name: String(name || "пункт").slice(0, 48), note: String(note || "").slice(0, 240) };
       placements[row.id].push(id);
     });
   });
@@ -618,7 +624,8 @@ function wireAi() {
       slot.textContent = "";
       const rect = slot.getBoundingClientRect();
       await window.tirproc.openDeepSeek({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
-      window.tirproc.sendPrompt(prompt);
+      const status = await window.tirproc.sendPrompt(prompt);
+      slot.textContent = status === "sent" ? "" : "Поле чата не найдено. Войди в аккаунт и нажми «Открыть DeepSeek» ещё раз.";
       return;
     }
     try { await navigator.clipboard.writeText(prompt); } catch {}
