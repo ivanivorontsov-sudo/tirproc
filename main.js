@@ -72,33 +72,29 @@ ipcMain.handle("send-prompt", async (_e, text) => {
   const guest = ensureView();
   win.setBrowserView(guest);
   if (lastBounds) place(lastBounds);
-  guest.webContents.focus();
-  const focused = await guest.webContents.executeJavaScript(`(() => {
-    const box = document.querySelector("textarea") || document.querySelector("[contenteditable='true']");
-    if (!box) return false;
-    box.focus();
-    if (box.tagName === "TEXTAREA") box.value = "";
-    else box.textContent = "";
-    return true;
-  })()`);
-  if (!focused) return "no-input";
-  guest.webContents.insertText(text);
-  await new Promise((resolve) => setTimeout(resolve, 400));
-  const clicked = await guest.webContents.executeJavaScript(`(() => {
-    const box = document.querySelector("textarea") || document.querySelector("[contenteditable='true']");
-    const buttons = [...document.querySelectorAll("button")];
-    const send = buttons.find((b) => /send|отправ/i.test((b.getAttribute("aria-label") || "") + (b.title || "")));
-    if (send && !send.disabled) { send.click(); return "button"; }
-    if (box) {
-      box.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
-      return "enter";
+  const script = `(async (text) => {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    let box = null;
+    for (let i = 0; i < 25; i++) {
+      box = document.querySelector("#chat-input, textarea.ds-textarea, .ds-textarea textarea, textarea[placeholder]");
+      if (box) break;
+      await sleep(400);
     }
-    return "no-send";
-  })()`);
-  if (clicked === "no-send") return "no-input";
-  guest.webContents.sendInputEvent({ type: "keyDown", keyCode: "Enter" });
-  guest.webContents.sendInputEvent({ type: "keyUp", keyCode: "Enter" });
-  return "sent";
+    if (!box) return "no-input";
+    box.focus();
+    const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set;
+    set.call(box, text);
+    box.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
+    await sleep(500);
+    const icon = document.querySelector('svg path[d*="M8.3125"]');
+    const send = icon && (icon.closest(".ds-icon-button") || icon.closest('[role="button"]') || icon.closest("button"));
+    const fallback = [...document.querySelectorAll('[role="button"], button')].find((el) => /send message|отправить/i.test((el.getAttribute("aria-label") || "") + (el.title || "")));
+    const btn = send || fallback;
+    if (!btn) return "no-button";
+    btn.click();
+    return "sent";
+  })(${JSON.stringify(text)})`;
+  return guest.webContents.executeJavaScript(script);
 });
 
 ipcMain.handle("read-answer", async () => {
