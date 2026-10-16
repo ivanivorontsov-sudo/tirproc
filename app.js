@@ -608,7 +608,6 @@ async function applyAiAnswer(text) {
   await saveBoard();
   render();
   $("aiPanel").hidden = true;
-  if (window.tirproc) window.tirproc.hideBrowser();
 }
 
 function wireAi() {
@@ -617,8 +616,7 @@ function wireAi() {
   $("aiBtn").addEventListener("click", () => { panel.hidden = false; refresh(); });
   $("aiClose").addEventListener("click", () => {
     panel.hidden = true;
-    if (window.tirproc) window.tirproc.hideBrowser();
-  });
+    });
   $("aiTopic").addEventListener("input", refresh);
   $("aiProducts").addEventListener("input", refresh);
   $("aiSearch").addEventListener("change", refresh);
@@ -626,41 +624,24 @@ function wireAi() {
     refresh();
     try { await navigator.clipboard.writeText($("aiPrompt").value); } catch {}
   });
-  $("aiClear").addEventListener("click", async () => {
-    if (!window.tirproc) return;
-    await window.tirproc.clearQwen();
-    $("browserSlot").textContent = "Вход и кэш Qwen стёрты. Войди заново и нажми «Открыть Qwen».";
-  });
   $("aiOpen").addEventListener("click", async () => {
     refresh();
     const prompt = $("aiPrompt").value;
+    const hint = $("aiHint");
     if (window.tirproc) {
-      const slot = $("browserSlot");
-      slot.textContent = "";
-      const rect = slot.getBoundingClientRect();
-      const opened = await window.tirproc.openQwen({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
-      if (opened === "blocked") {
-        await window.tirproc.openExternal(prompt);
-        slot.textContent = "Qwen режет встроенное окно. Открыл обычный браузер, запрос уже в буфере: вставь его в чат.";
-        return;
-      }
-      const status = await window.tirproc.sendPrompt(prompt);
-      slot.textContent = status === "sent"
-        ? "Запрос ушёл. Дождись конца ответа, потом жми сборку."
-        : "Чат открыт, но сам не отправил. Запрос в буфере, вставь его в поле.";
-      return;
+      await window.tirproc.openChat(prompt);
+    } else {
+      try { await navigator.clipboard.writeText(prompt); } catch {}
+      window.open("https://chat.qwen.ai/", "_blank", "noopener");
     }
-    try { await navigator.clipboard.writeText(prompt); } catch {}
+    hint.textContent = "Запрос скопирован. В открывшемся чате Qwen вставь его (Ctrl+V) и отправь сам. Когда ответ готов, скопируй его и нажми «Собрать тир-лист из ответа».";
   });
   $("aiBuild").addEventListener("click", async () => {
     let text = ($("aiAnswer").value || "").trim();
-    if (!text && window.tirproc) {
-      try { text = (await window.tirproc.readAnswer() || "").trim(); } catch (err) { text = ""; }
-    }
     if (!text) {
-      try { text = (await navigator.clipboard.readText()).trim(); } catch {}
+      try { text = (window.tirproc ? await window.tirproc.readClipboard() : await navigator.clipboard.readText()).trim(); } catch {}
     }
-    if (!text) return alert("Ответ Qwen ещё не прочитался. Дождись конца ответа и нажми сборку ещё раз.");
+    if (!text) return alert("Скопируй ответ Qwen или вставь его в поле ниже, потом нажми сборку.");
     $("aiAnswer").value = text.slice(0, 4000);
     try { await applyAiAnswer(text); }
     catch (err) { alert(err.message); }

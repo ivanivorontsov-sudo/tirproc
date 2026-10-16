@@ -1,14 +1,10 @@
-const { app, BrowserWindow, BrowserView, ipcMain, clipboard, session, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, clipboard, shell } = require("electron");
 const path = require("path");
 
-const chrome = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
-app.userAgentFallback = chrome;
-
-let win;
-let view;
+const chatUrl = "https://chat.qwen.ai/";
 
 function createWindow() {
-  win = new BrowserWindow({
+  const win = new BrowserWindow({
     width: 1280,
     height: 860,
     title: "Тирпроц",
@@ -18,115 +14,15 @@ function createWindow() {
     }
   });
   win.loadFile("index.html");
-  win.on("resize", () => { if (view) place(lastBounds); });
 }
 
-let lastBounds = null;
-
-function place(bounds) {
-  if (!view || !bounds) return;
-  lastBounds = bounds;
-  const area = win.getContentBounds();
-  view.setBounds({
-    x: Math.max(0, Math.round(bounds.x)),
-    y: Math.max(0, Math.round(bounds.y)),
-    width: Math.max(200, Math.min(Math.round(bounds.width), area.width)),
-    height: Math.max(200, Math.min(Math.round(bounds.height), area.height))
-  });
-}
-
-function ensureView() {
-  if (view) return view;
-  view = new BrowserView({
-    webPreferences: {
-      partition: "persist:qwen",
-      contextIsolation: true
-    }
-  });
-  view.webContents.setUserAgent(chrome);
-  win.setBrowserView(view);
-  view.webContents.loadURL("https://chat.qwen.ai/");
-  return view;
-}
-
-
-ipcMain.handle("open-deepseek", async (_e, bounds) => {
-  const guest = ensureView();
-  guest.webContents.setUserAgent(chrome);
-  win.setBrowserView(guest);
-  place(bounds);
-  const url = guest.webContents.getURL();
-  if (!url.includes("qwen.ai")) await guest.webContents.loadURL("https://chat.qwen.ai/");
-  else if (guest.webContents.isLoading()) {
-    await new Promise((resolve) => guest.webContents.once("did-finish-load", resolve));
-  }
-  const title = guest.webContents.getTitle();
-  const body = await guest.webContents.executeJavaScript("document.body ? document.body.innerText.slice(0, 180) : ''");
-  if (/403|could not be satisfied|request blocked/i.test(title + " " + body)) {
-    if (win) win.removeBrowserView(guest);
-    return "blocked";
-  }
-  return "ready";
-});
-
-ipcMain.handle("open-external", async (_e, text) => {
-  clipboard.writeText(text || "");
-  await shell.openExternal("https://chat.qwen.ai/");
+ipcMain.handle("open-chat", async (_e, text) => {
+  clipboard.writeText(String(text || ""));
+  await shell.openExternal(chatUrl);
   return "opened";
 });
 
-ipcMain.handle("hide-browser", () => {
-  if (view && win) win.removeBrowserView(view);
-  return true;
-});
-
-ipcMain.handle("clear-deepseek", async () => {
-  if (view && win) win.removeBrowserView(view);
-  const ses = session.fromPartition("persist:qwen");
-  await ses.clearStorageData();
-  await ses.clearCache();
-  if (view) {
-    view.webContents.loadURL("https://chat.qwen.ai/");
-  }
-  return "cleared";
-});
-
-
-ipcMain.handle("send-prompt", async (_e, text) => {
-  const guest = ensureView();
-  win.setBrowserView(guest);
-  if (lastBounds) place(lastBounds);
-  guest.webContents.focus();
-  const status = await guest.webContents.executeJavaScript(`(async (text) => {
-    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-    let box = null;
-    for (let i = 0; i < 20 && !box; i++) {
-      box = document.querySelector("#chat-input, textarea.message-input-textarea");
-      if (!box) await sleep(400);
-    }
-    if (!box) return "no-input";
-    box.focus();
-    const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set;
-    set.call(box, text);
-    box.dispatchEvent(new Event("input", { bubbles: true }));
-    await sleep(400);
-    const btn = document.querySelector("#send-message-button, .message-input-right-button-send");
-    if (!btn) return "no-button";
-    btn.click();
-    return "sent";
-  })(${JSON.stringify(text)})`);
-  return status;
-});
-
-ipcMain.handle("read-answer", async () => {
-  if (!view) return "";
-  return view.webContents.executeJavaScript(`(() => {
-    const clean = (s) => s.replace(/【[^】]*】/g, " ").replace(/\\[\\d+\\]\\([^)]*\\)/g, " ").replace(/\\[\\d+\\]/g, " ");
-    const blocks = [...document.querySelectorAll(".response-message-content, .phase-answer, pre, code")].map((n) => n.innerText).filter((s) => s && s.trim().length > 20);
-    const text = blocks.length ? blocks.join("\\n") : (document.body ? document.body.innerText : "");
-    return clean(text);
-  })()`);
-});
+ipcMain.handle("read-clipboard", () => clipboard.readText());
 
 app.whenReady().then(createWindow);
 app.on("window-all-closed", () => app.quit());

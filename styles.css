@@ -159,6 +159,5 @@ textarea { min-height: 64px; resize: vertical; }
 .ai-head { display: flex; justify-content: space-between; align-items: center; }
 .check { font-size: 14px; }
 #aiPrompt, #aiAnswer { min-height: 72px; }
-#browserSlot { height: 360px; border: 1px solid var(--line); border-radius: 12px; background: #fff; display: grid; place-items: center; color: var(--muted); }
 
 [hidden] { display: none !important; }

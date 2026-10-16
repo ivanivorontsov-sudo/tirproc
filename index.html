@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Тирпроц</title>
   <link rel="stylesheet" href="styles.css">
@@ -90,19 +91,18 @@
         <strong>Qwen</strong>
         <button id="aiClose">Закрыть</button>
       </div>
-      <p class="hint">Во встроенном браузере можно войти в Qwen. После загрузки Тирпроц сам вписывает запрос. Ответ забирается в тир-лист кнопкой сборки.</p>
+      <p class="hint">«Открыть Qwen» копирует запрос и открывает чат в браузере. Вставь запрос и отправь сам, затем скопируй ответ и нажми сборку.</p>
       <input id="aiTopic" maxlength="120" placeholder="Тема: лучшие супы, игры 2024, районы города">
       <textarea id="aiProducts" maxlength="800" placeholder="Конкретные продукты, если есть. По одному в строке"></textarea>
       <label class="check"><input id="aiSearch" type="checkbox" checked> попросить поискать свежие рейтинги</label>
       <div class="row">
         <button id="aiOpen">Открыть Qwen</button>
-        <button id="aiClear">Выйти и очистить кэш</button>
         <button id="aiCopy">Скопировать запрос</button>
         <button id="aiBuild">Собрать тир-лист из ответа</button>
       </div>
       <textarea id="aiPrompt" readonly></textarea>
-      <div id="browserSlot">Здесь откроется Qwen</div>
-      <textarea id="aiAnswer" placeholder="Если сборка не видит ответ, вставь сюда JSON из Qwen"></textarea>
+      <p id="aiHint" class="hint"></p>
+      <textarea id="aiAnswer" placeholder="Или вставь сюда ответ Qwen"></textarea>
     </div>
   </div>
   <script src="app.js"></script>

@@ -1,8 +1,8 @@
 {
   "name": "tirproc",
   "productName": "Тирпроц",
-  "version": "1.2.1",
-  "description": "Тирпроц со встроенным браузером Qwen",
+  "version": "1.3.0",
+  "description": "Офлайн-редактор тир-листов",
   "main": "main.js",
   "author": "Иван Воронцов",
   "license": "UNLICENSED",
@@ -17,16 +17,33 @@
   "build": {
     "appId": "ru.tirproc.app",
     "productName": "Тирпроц",
-    "directories": { "output": "dist" },
+    "directories": {
+      "output": "dist"
+    },
     "publish": null,
-    "files": ["index.html", "styles.css", "app.js", "main.js", "preload.js", "package.json"],
-    "win": { "target": ["nsis"] },
+    "files": [
+      "index.html",
+      "styles.css",
+      "app.js",
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "deleteAppDataOnUninstall": true,
       "shortcutName": "Тирпроц",
       "artifactName": "Tirproc-Setup-${version}.exe"
-    }
+    },
+    "extraFiles": [
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md"
+    ]
   }
 }
